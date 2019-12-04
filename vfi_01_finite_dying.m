@@ -28,8 +28,8 @@ CT = zeros(nk,na,T);
 % note: TAKE ADVANTAGE OF MONOTONICTY AND CONVEXITY...
 
 % value of dying is very negative, so better consume all today:
-%Vtp1 = -1000*ones(nk,na); % represents the V_{t+1}, while V is the V_t
-Vtp1 = zeros(nk,na); % represents the V_{t+1}, while V is the V_t
+Vtp1 = -1000*ones(nk,na); % represents the V_{t+1}, while V is the V_t
+%Vtp1 = zeros(nk,na); % represents the V_{t+1}, while V is the V_t
 
 for tt = T:-1:1
     bbetaj = bbeta*phi(tt);

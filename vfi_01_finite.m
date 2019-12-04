@@ -37,7 +37,7 @@ CT = zeros(nk,na,T);
 
 % value of dying is very negative, so better consume all today:
 Vtp1 = -1000*ones(nk,na); % represents the V_{t+1}, while V is the V_t
-Vtp1 = zeros(nk,na); % represents the V_{t+1}, while V is the V_t
+%Vtp1 = zeros(nk,na); % represents the V_{t+1}, while V is the V_t
 
 for tt = T:-1:1
     
@@ -66,7 +66,7 @@ for tt = T:-1:1
                 nCapitalChoice = 1;
                 %capitalChoice  = vGridCapital(nCapitalChoice);
 
-                for nCapitalNextPeriod = gridCapitalNextPeriod:nk
+                for nCapitalNextPeriod = gridCapitalNextPeriod:nk %gridCapitalNextPeriod:nk
 
                     valueProvisional = (1-bbeta)*F(nCapital,nCapitalNextPeriod,nProductivity)+bbeta*expectedValueFunction(nCapitalNextPeriod,nProductivity);
 

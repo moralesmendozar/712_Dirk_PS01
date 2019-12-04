@@ -72,6 +72,7 @@ a       = exp(a9);
 savmin    = 0.001;
 savmax    = vProductivity(N)/(1-bbeta); % -natural borrowing constraint
 k = curvspace(savmin,savmax,nk,2)'; % use curved grid to enhance accuracy
+kconstrained = k; %save for later
 % start in the utility of cash at hand:
 Vinit = u( (1+r)*repmat(k,1,na)+repmat(a,nk,1) );
 
@@ -87,7 +88,8 @@ toc;
 [asigma4,apsigma4]    = rouwenhorst_ram(N,p,p,0.4*sqrt(N-1));
 a2sigma4       = exp(asigma4);
 tic;
-[V2,IG2,S2,C2] = vfi_01_infty(k,a2sigma4,apsigma4,bbeta,r,u,d,tol,maxiter,Vinit,quietdown);
+[V2,IG2,S2,C2] = vfi_01_infty(k,a2sigma4,apsigma4,bbeta,r,u,d,tol,...
+    maxiter,Vinit,quietdown);
 toc;
 
 % plots
@@ -119,6 +121,7 @@ legend('Min shock','Mean shock','Max shock','Location','NorthWest');
 
 %% Simulation for first 61 periods of an infinitely lived agent's life:
 % https://www.mathworks.com/help/econ/dtmc.simulate.html#d117e311371
+disp('Starting infinite simulation')
 numsim = 1000;
 mc = dtmc(mTransition);
 shocks_sim1 = zeros(numsim,T+1);  % contains all the shock for  simulations
@@ -159,7 +162,7 @@ for iisim = 1:numsim
         Assets_sim1(iisim,tt+1) = kprime;       % record asset sim
         Assets_sim1i(iisim,tt+1) = k0i;         % record asset loc sim
         kprime2 = S2(k0i2,prodShocki);
-        CS_sim1(iisim,tt) = C2(k0i2,prodShocki);  % record consumption sim
+        CS_sim2(iisim,tt) = C2(k0i2,prodShocki);  % record consumption sim
         k0i2 = IG2(k0i2,prodShocki);               % get new loc for savings
         Assets_sim2(iisim,tt+1) = kprime2;       % record asset sim
         Assets_sim2i(iisim,tt+1) = k0i2;         % record asset loc sim
@@ -167,35 +170,28 @@ for iisim = 1:numsim
     end
     
 end
-%% 2.4) plot of simulation of consumption with given parameters:
+
+disp('done infinite simulation')
+
+%% 2.4) Plot of simulation (infty agnts) consumption with given parameters:
 % Plot of mean of simulation:
 figure;
 plot(1:T+1,nanmean( shocks_sim1  ) ); 
 title('2.2) Simulation starting with zero wealth and worst income shock');
-%title('2.2) Average shocks (income) from simulation');
 xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
 
 %figure;
 hold on;
 plot(1:T+1,nanmean( Assets_sim1(:,2:end)  ) ); 
-%title('2.2) Average Policy function (savings) from simulation');
-xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
-
-%figure;
 plot(1:T+1,nanmean( CS_sim1  ) ); 
-%title('2.2) Average Consumption from simulation');
-xlabel('time'); 
-%ylabel('Policy (savings)');
+
+plot(1:T+1,nanmean( Assets_sim2(:,2:end)  ) ); 
+plot(1:T+1,nanmean( CS_sim2  ) ); 
+
 hold off;
-legend('Income','Savings','Consumption','Location','East');
-%saveas(gcf,'fig01_3_cons.eps','epsc2');
-
-
-
+legend('Income shock','Savings \delta = 0.2','Consumption \delta = 0.2',...
+    'Savings \delta = 0.4','Consumption \delta = 0.4','Location','East');
+%saveas(gcf,'fig01_4_simInftyAgents.eps','epsc2');
 
 
 
@@ -211,7 +207,8 @@ toc;
 [asigma4,apsigma4]    = rouwenhorst_ram(N,p,p,0.4*sqrt(N-1));
 a2sigma4       = exp(asigma4);
 tic;
-[Vf2,IGf2,Sf2,Cf2] = vfi_01_infty(k,a2sigma4,apsigma4,bbeta,r,u,d,tol,maxiter,Vinit,quietdown);
+[VTf2,IGTf2,STf2,CTf2] = vfi_01_finite(k,a2sigma4,apsigma4,bbeta,r,u,d,...
+    tol,maxiter,Vinit,T);
 toc;
 
 % plots for finite stuff
@@ -223,7 +220,7 @@ legend('Min shock','Mean shock','Max shock','Location','NorthWest');
 xlabel('Assets'); 
 ylabel('Value');
 
-%saveas(gcf,'fig01_1_val.eps','epsc2');
+%saveas(gcf,'fig03_1_val.eps','epsc2');
 %
 figure;
 plot(k,STf(:,[1 5 9],tplot)); 
@@ -231,7 +228,7 @@ title('2.3) Savings Policy function for dying agent, in t = 55');
 xlabel('Assets'); 
 ylabel('Policy (savings)');
 legend('Min shock','Mean shock','Max shock','Location','NorthWest');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
+%saveas(gcf,'fig03_2_assets.eps','epsc2');
 
 %% Compare young/old
 figure;
@@ -248,10 +245,11 @@ xlabel('Assets');
 ylabel('Policy (consumption)');
 legend('Min shock','Mean shock','Max shock','Location','NorthWest');
 
-%saveas(gcf,'fig01_3_cons.eps','epsc2');
+%saveas(gcf,'fig03_3_cons.eps','epsc2');
 
 %% Simulation for a finitely lived agent
 %   Similar to previous, but with Value Function changing...
+disp('Starting finite simulation')
 numsim = 1000;
 mc = dtmc(mTransition);
 shocks_sim1 = NaN(numsim,T);    % contains all the shock for  simulations
@@ -259,10 +257,14 @@ shocks_sim1i = NaN(numsim,T);   % contains all the loc shocks 4 simltns
 Assets_sim1 = NaN(numsim,T+1);  % contains all the assets simulations
 Assets_sim1i = NaN(numsim,T+1); % contains all the loc assets simltns
 CS_sim1 = NaN(numsim,T);        % contains all consumptions simulation
+Assets_sim2 = NaN(numsim,T+1);  % contains all the assets simulations
+Assets_sim2i = NaN(numsim,T+1); % contains all the loc assets simltns
+CS_sim2 = NaN(numsim,T);        % contains all consumptions simulation
 
 for iisim = 1:numsim
     
-    [unusedtemp, k0i] = min(abs(k)); % start simulation with no wealth
+    [~, k0i] = min(abs(k)); % start simulation with no wealth
+    k0i2 = k0i;
     x0 = zeros(1,mc.NumStates);  
     x0(1) = 1;                       % start wimulations with lowest shock
     shocksT = simulate(mc,T-1,'X0',x0);  % productivity shocks
@@ -270,55 +272,174 @@ for iisim = 1:numsim
     shocks_sim1i(iisim,:) = shocksT';    % record shocks loc from simln
     Assets_sim1(iisim,1) = k(k0i);       % record asset holding...
     Assets_sim1i(iisim,1) = k0i;         % record asset loc sim
+    Assets_sim2(iisim,1) = k(k0i2);       % record asset holding...
+    Assets_sim2i(iisim,1) = k0i2;         % record asset loc sim
     
     for tt = 1:T
         prodShocki = shocksT(tt);
         prodShock = exp(vProductivity(prodShocki));
-        kprime = ST(k0i,prodShocki,tt);
-        consumpt = CT(k0i,prodShocki,tt);
-        CS_sim1(iisim,tt) = consumpt;           % record consumption sim
-        k0i = IGT(k0i,prodShocki,tt);           % get new loc for savings
+        kprime = STf(k0i,prodShocki,tt);
+        CS_sim1(iisim,tt) = CTf(k0i,prodShocki,tt);% record consumption sim
+        k0i = IGTf(k0i,prodShocki,tt);           % get new loc for savings
         Assets_sim1(iisim,tt+1) = kprime;       % record asset sim
         Assets_sim1i(iisim,tt+1) = k0i;         % record asset loc sim
+        kprime2 = STf2(k0i2,prodShocki,tt);
+        CS_sim2(iisim,tt) = CTf2(k0i2,prodShocki,tt);% record consmptn sim
+        k0i2 = IGTf2(k0i2,prodShocki,tt);         % get new loc for savings
+        Assets_sim2(iisim,tt+1) = kprime2;       % record asset sim
+        Assets_sim2i(iisim,tt+1) = k0i2;         % record asset loc sim
         
     end
     
 end
-
-%%
+disp('done finite simulation')
+%% 2.5) Plot of simulation (finit agnts) consumption with given parameters:
 % Plot of mean of simulation:
 figure;
 plot(1:T,nanmean( shocks_sim1  ) ); 
 title('2.2) Simulation starting with zero wealth and worst income shock');
-%title('2.2) Average shocks (income) from simulation');
 xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
 
 %figure;
 hold on;
 plot(1:T,nanmean( Assets_sim1(:,2:end)  ) ); 
-%title('2.2) Average Policy function (savings) from simulation');
-xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
-
-%figure;
 plot(1:T,nanmean( CS_sim1  ) ); 
-%title('2.2) Average Consumption from simulation');
-xlabel('time'); 
-%ylabel('Policy (savings)');
-hold off;
-legend('Income','Savings','Consumption','Location','East');
-%saveas(gcf,'fig01_3_cons.eps','epsc2');
 
-%% 2.6) To get a hump shape maybe, relax the constraint of assets
+plot(1:T,nanmean( Assets_sim2(:,2:end)  ) ); 
+plot(1:T,nanmean( CS_sim2  ) ); 
+
+hold off;
+legend('Income shock','Savings \delta = 0.2','Consumption \delta = 0.2',...
+    'Savings \delta = 0.4','Consumption \delta = 0.4','Location','East');
+%saveas(gcf,'fig01_5_simFiniteAgents.eps','epsc2');
+
+
+
+%% 2.6) Trying to get a hump shape maybe, relax the constraint of assets
+%now compute the environment with sigmaepsilon = 0.4
+
+%invert rho and r...
+r               = 0.02;         % interest rate
+rho             = 0.04;         % bbeta = 1 / (1+rho)
+
+quietdown = 0;
+knewBound = -0.4;
+disp('Running finitely lived agents VFI with relaxed Constraint')
+kHump = [linspace(knewBound,min(k)-0.00001,100)'; k];
+tic;
+[VTf,IGTf,STf,CTf] = vfi_01_finite(kHump,a,ap9,bbeta,r,u,d,tol,maxiter,Vinit,T);
+toc;
+
 %now compute the environment with sigmaepsilon = 0.4
 [asigma4,apsigma4]    = rouwenhorst_ram(N,p,p,0.4*sqrt(N-1));
 a2sigma4       = exp(asigma4);
 tic;
-[V2,IG2,S2,C2] = vfi_01_infty(k,a2sigma4,apsigma4,bbeta,r,u,d,tol,maxiter,Vinit,quietdown);
+[VTf2,IGTf2,STf2,CTf2] = vfi_01_finite(kHump,a2sigma4,apsigma4,bbeta,r,u,d,...
+    tol,maxiter,Vinit,T);
 toc;
+
+% plots for finite stuff
+figure;
+tplot = 55;
+plot(kHump,VTf(:,[1 5 9],tplot));
+title('2.3) Value function for dying agent in t = 55');
+legend('Min shock','Mean shock','Max shock','Location','NorthWest');
+xlabel('Assets'); 
+ylabel('Value');
+
+%saveas(gcf,'fig03_1_val.eps','epsc2');
+%
+figure;
+plot(kHump,STf(:,[1 5 9],tplot)); 
+title('2.3) Savings Policy function for dying agent, in t = 55');
+xlabel('Assets'); 
+ylabel('Policy (savings)');
+legend('Min shock','Mean shock','Max shock','Location','NorthWest');
+%saveas(gcf,'fig03_2_assets.eps','epsc2');
+
+% Compare young/old
+figure;
+plot(kHump,CTf(:,[1 5 9],1)); 
+title('2.3) Consmptn Policy function for dying agent, in t = 1 (young)');
+xlabel('Assets'); 
+ylabel('Policy (consumption)');
+legend('Min shock','Mean shock','Max shock','Location','NorthWest');
+
+figure;
+plot(kHump,CTf(:,[1 5 9],tplot)); 
+title('2.3) Consumption Policy function for dying agent, in t = 55');
+xlabel('Assets'); 
+ylabel('Policy (consumption)');
+legend('Min shock','Mean shock','Max shock','Location','NorthWest');
+
+%saveas(gcf,'fig03_3_cons.eps','epsc2');
+
+% Simulation for a finitely lived agent
+%   Similar to previous, but with Value Function changing...
+disp('Starting finite simulation')
+numsim = 1000;
+mc = dtmc(mTransition);
+shocks_sim1 = NaN(numsim,T);    % contains all the shock for  simulations
+shocks_sim1i = NaN(numsim,T);   % contains all the loc shocks 4 simltns
+Assets_sim1 = NaN(numsim,T+1);  % contains all the assets simulations
+Assets_sim1i = NaN(numsim,T+1); % contains all the loc assets simltns
+CS_sim1 = NaN(numsim,T);        % contains all consumptions simulation
+Assets_sim2 = NaN(numsim,T+1);  % contains all the assets simulations
+Assets_sim2i = NaN(numsim,T+1); % contains all the loc assets simltns
+CS_sim2 = NaN(numsim,T);        % contains all consumptions simulation
+
+for iisim = 1:numsim
+    
+    [~, k0i] = min(abs(kHump)); % start simulation with no wealth
+    k0i2 = k0i;
+    x0 = zeros(1,mc.NumStates);  
+    x0(1) = 1;                       % start wimulations with lowest shock
+    shocksT = simulate(mc,T-1,'X0',x0);  % productivity shocks
+    shocks_sim1(iisim,:) = exp(vProductivity(shocksT)'); % recrd shocks sim
+    shocks_sim1i(iisim,:) = shocksT';    % record shocks loc from simln
+    Assets_sim1(iisim,1) = kHump(k0i);       % record asset holding...
+    Assets_sim1i(iisim,1) = k0i;         % record asset loc sim
+    Assets_sim2(iisim,1) = kHump(k0i2);       % record asset holding...
+    Assets_sim2i(iisim,1) = k0i2;         % record asset loc sim
+    
+    for tt = 1:T
+        prodShocki = shocksT(tt);
+        prodShock = exp(vProductivity(prodShocki));
+        kprime = STf(k0i,prodShocki,tt);
+        CS_sim1(iisim,tt) = CTf(k0i,prodShocki,tt);% record consumption sim
+        k0i = IGTf(k0i,prodShocki,tt);           % get new loc for savings
+        Assets_sim1(iisim,tt+1) = kprime;       % record asset sim
+        Assets_sim1i(iisim,tt+1) = k0i;         % record asset loc sim
+        kprime2 = STf2(k0i2,prodShocki,tt);
+        CS_sim2(iisim,tt) = CTf2(k0i2,prodShocki,tt);% record consmptn sim
+        k0i2 = IGTf2(k0i2,prodShocki,tt);         % get new loc for savings
+        Assets_sim2(iisim,tt+1) = kprime2;       % record asset sim
+        Assets_sim2i(iisim,tt+1) = k0i2;         % record asset loc sim
+        
+    end
+    
+end
+disp('done finite simulation')
+
+% Plot of simulation (finit agnts) consumption with given parameters:
+% Plot of mean of simulation:
+figure;
+plot(1:T,nanmean( shocks_sim1  ) ); 
+title('2.2) Simulation starting with zero wealth and worst income shock');
+xlabel('time'); 
+
+%figure;
+hold on;
+plot(1:T,nanmean( Assets_sim1(:,2:end)  ) ); 
+plot(1:T,nanmean( CS_sim1  ) ); 
+
+plot(1:T,nanmean( Assets_sim2(:,2:end)  ) ); 
+plot(1:T,nanmean( CS_sim2  ) ); 
+
+hold off;
+legend('Income shock','Savings \delta = 0.2','Consumption \delta = 0.2',...
+    'Savings \delta = 0.4','Consumption \delta = 0.4','Location','East');
+%saveas(gcf,'fig01_6_simFiniteAgentsDying.eps','epsc2');
 
 
 %% 2.7) Death probability and specific income structure...  X-)
@@ -327,16 +448,27 @@ xtext = textread('incprofile.txt','%f');
 %xtext = textscan('incprofile.txt');
 ybar = xtext(:,1);
 ybar = [ybar; theta*ones(16,1)*ybar(45)];
+
+knewBound = -0.4;
+kHump = [linspace(knewBound,min(k)-0.00001,100)'; kconstrained];
+k = kHump;
 %probas of living next period:
 phis = textread('survs.txt','%f');
-
+T = 60;
 disp('Running finitely lived agents VFI, with proba of dying')
 tic;
 [VTd,IGTd,STd,CTd] = vfi_01_finite_dying(k,a,ap9,bbeta,phis,r,...
-    u,d,tol,maxiter,Vinit,T+1,ybar);
+    u,d,tol,maxiter,Vinit,T,ybar);
 toc;
-%%
-% plots for finite stuff
+%now compute the environment with sigmaepsilon = 0.4
+[asigma4,apsigma4]    = rouwenhorst_ram(N,p,p,0.4*sqrt(N-1));
+a2sigma4       = exp(asigma4);
+tic;
+[VTd2,IGTd2,STd2,CTd2] = vfi_01_finite_dying(k,a2sigma4,apsigma4,bbeta,...
+    phis,r,u,d,tol,maxiter,Vinit,T,ybar);
+toc;
+
+%% plots for finite stuff, shocks given by data:
 figure;
 tplot = 55;
 plot(k,VTd(:,[1 5 9],tplot));
@@ -376,22 +508,29 @@ legend('Min shock','Mean shock','Max shock','Location','NorthWest');
 %   Similar to previous, but with Value Function changing...
 %           and NaN because we might kill him...
 numsim = 1000;
+T = 59;
 mc = dtmc(mTransition);
 shocks_sim1 = NaN(numsim,T+1);    % contains all the shock for  simulations
 shocks_sim1i = NaN(numsim,T+1);   % contains all the loc shocks 4 simltns
 Assets_sim1 = NaN(numsim,T+2);  % contains all the assets simulations
 Assets_sim1i = NaN(numsim,T+2); % contains all the loc assets simltns
-CS_sim1 = NaN(numsim,T);        % contains all consumptions simulation
+CS_sim1 = NaN(numsim,T+1);        % contains all consumptions simulation
+Assets_sim2 = NaN(numsim,T+2);  % contains all the assets simulations
+Assets_sim2i = NaN(numsim,T+2); % contains all the loc assets simltns
+CS_sim2 = NaN(numsim,T+1);        % contains all consumptions simulation
 
 for iisim = 1:numsim
     
-    [unusedtemp, k0i] = min(abs(k)); % start simulation with no wealth
+    [~, k0i] = min(abs(k)); % start simulation with no wealth
+    k0i2 = k0i;
     x0 = zeros(1,mc.NumStates);      % for simulation, get zeros size na
     x0(1) = 1;                       % start wimulations with lowest shock
     shocksT = simulate(mc,T,'X0',x0);  % productivity shocks
     shocks_sim1i(iisim,:) = shocksT';    % record shocks loc from simln
     Assets_sim1(iisim,1) = k(k0i);       % record 1st asset holding...
     Assets_sim1i(iisim,1) = k0i;         % record 1st asset loc sim
+    Assets_sim2(iisim,1) = k(k0i2);       % record 1st asset holding...
+    Assets_sim2i(iisim,1) = k0i2;         % record 1st asset loc sim
     
     for tt = 1:T+1
         prodShocki = shocksT(tt);
@@ -409,35 +548,44 @@ for iisim = 1:numsim
         end
     end
     
+    for tt = 1:T+1
+        prodShocki = shocksT(tt);
+        prodShock = exp(vProductivity(prodShocki))*ybar(tt);
+        shocks_sim1(iisim,tt) = prodShock;      % record shocks sim
+        kprime2 = STd2(k0i2,prodShocki,tt);
+        consumpt2 = CTd2(k0i2,prodShocki,tt);
+        CS_sim2(iisim,tt) = consumpt2;           % record consumption sim
+        k0i2 = IGTd2(k0i,prodShocki,tt);           % get new loc for savings
+        Assets_sim2(iisim,tt+1) = kprime2;       % record asset sim
+        Assets_sim2i(iisim,tt+1) = k0i2;         % record asset loc sim
+        %once the consumption and savings are set, kill person maybe:
+        if rand() > phis(tt)  %kill the person with certain proba...
+            break
+        end
+    end
+    
 end
+disp('Computed Simulation of dying agent with shocks given by data. ok')
 
-%%
+% 2.7end) Plot of simulation (finit agnts) consumption with shocks by data:
 % Plot of mean of simulation:
 figure;
 plot(1:T+1,nanmean( shocks_sim1  ) ); 
-title('2.7) Sim proba die, start w/ 0 wealth and worst income shock');
-%title('2.2) Average shocks (income) from simulation');
+title('2.2) Simulation starting with zero wealth and worst income shock');
 xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
 
 %figure;
 hold on;
 plot(1:T+1,nanmean( Assets_sim1(:,2:end)  ) ); 
-%title('2.2) Average Policy function (savings) from simulation');
-xlabel('time'); 
-%ylabel('Policy (savings)');
-%saveas(gcf,'fig01_2_assets.eps','epsc2');
+plot(1:T+1,nanmean( CS_sim1  ) ); 
+plot(1:T+1,nanmean( Assets_sim2(:,2:end)  ) ); 
+plot(1:T+1,nanmean( CS_sim2  ) ); 
 
-%figure;
-cons_ex7 = nanmean( CS_sim1  );
-plot(1:T+1, cons_ex7 ); 
-%title('2.2) Average Consumption from simulation');
-xlabel('time'); 
-%ylabel('Policy (consumption)');
 hold off;
-legend('Income','Savings','Consumption','Location','East');
-%saveas(gcf,'fig01_3_cons.eps','epsc2');
+legend('Income shock','Savings \delta = 0.2','Consumption \delta = 0.2',...
+    'Savings \delta = 0.4','Consumption \delta = 0.4','Location','Northwest');
+%saveas(gcf,'fig01_7_simFiniteAgents_incomeData.eps','epsc2');
+
 
 %% 2.8)
 %compare the consumption generated by fdz-Vllvrd&Krueger(2007):
