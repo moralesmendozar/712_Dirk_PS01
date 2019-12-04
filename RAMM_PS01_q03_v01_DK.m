@@ -1,6 +1,5 @@
 %% UPENN, 714, Prof Dirk Krueger, Problem set 01. Question 3
 % Rodrigo Morales
-% based on a code by Anna Cororaton
 % November 2019
 % Aiyagari model, general Equilibrium
 
